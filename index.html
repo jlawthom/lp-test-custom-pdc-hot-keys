@@ -108,16 +108,25 @@
         }
     }
 
-    // Hotkey Listener: Alt + [1-9]
-    window.addEventListener('keydown', (e) => {
-        if (e.altKey && e.key >= 1 && e.key <= 9) {
-            const found = snippets.find(s => s.hotkey === e.key);
-            if (found) {
-                e.preventDefault();
-                useSnippet(found);
-            }
+// Updated Hotkey Listener with Debug Logging
+window.addEventListener('keydown', (e) => {
+    // Log every Alt/Option key press to verify the listener is active
+    if (e.altKey) {
+        console.log(`[DEBUG] Alt key detected. Key pressed: ${e.key}`);
+    }
+
+    if (e.altKey && e.key >= 1 && e.key <= 9) {
+        const found = snippets.find(s => s.hotkey === e.key);
+        
+        if (found) {
+            console.log(`[SUCCESS] Match found for Hotkey Alt+${e.key}: "${found.title}"`);
+            e.preventDefault(); // Prevents default browser behavior
+            useSnippet(found);
+        } else {
+            console.warn(`[INFO] Alt+${e.key} pressed, but no snippet is assigned to this hotkey.`);
         }
-    });
+    }
+});
 
     window.onload = () => {
         initSDK();
