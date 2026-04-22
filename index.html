@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Agent Workspace PDC Widget</title>
+    <script src="https://lpcdn.lpsnmedia.net/webagent/client-SDK.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background: #f4f4f7; color: #333; }
+        .container { display: flex; flex-direction: column; gap: 15px; }
+        .snippet-card { background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; position: relative; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: 0.2s; }
+        .snippet-card:hover { border-color: #0073ec; }
+        .hotkey-badge { background: #0073ec; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; position: absolute; top: 10px; right: 10px; }
+        .content-preview { font-size: 13px; color: #666; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+        input, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        button { cursor: pointer; padding: 8px 12px; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        .btn-add { background: #0073ec; color: white; width: 100%; }
+        .btn-add:hover { background: #005bb5; }
+        h3 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>My Content (Custom PDC)</h3>
+    
+    <div id="snippetList"></div>
+
+    <hr>
+
+    <div id="editor">
+        <h3>Create/Edit Snippet</h3>
+        <div class="form-group">
+            <input type="text" id="snipTitle" placeholder="Title (e.g., Greeting)">
+            <input type="number" id="snipHotkey" placeholder="Hotkey (1-9)" min="1" max="9">
+            <textarea id="snipText" rows="3" placeholder="Snippet content..."></textarea>
+            <button class="btn-add" onclick="saveSnippet()">Save to My Content</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Generic storage key to remove brand association
+    const STORAGE_KEY = 'lp_custom_pdc_snippets';
+    let snippets = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    let sdk = null;
+
+    // Initialize the LivePerson SDK
+    function initSDK() {
+        // Configuration should be adjusted per regional domain (us, eu, apac)
+        sdk = new lpTag.agentSDK.init();
+        console.log("Agent Workspace SDK Initialized");
+    }
+
+    // Render snippets in the UI
+    function renderSnippets() {
+        const list = document.getElementById('snippetList');
+        list.innerHTML = snippets.length === 0 ? '<p style="font-size:12px; color:#999;">No personal snippets found.</p>' : '';
+        
+        snippets.forEach((s) => {
+            const div = document.createElement('div');
+            div.className = 'snippet-card';
+            div.innerHTML = `
+                <span class="hotkey-badge">Alt + ${s.hotkey}</span>
+                <strong>${s.title}</strong>
+                <div class="content-preview">${s.text}</div>
+            `;
+            div.onclick = () => useSnippet(s);
+            list.appendChild(div);
+        });
+    }
+
+    // Use a snippet: Inject text into the agent input area
+    function useSnippet(snippet) {
+        if (!sdk) return;
+
+        const data = { text: snippet.text };
+        sdk.command('write.chat', data, (err) => {
+            if (err) {
+                console.error("Error injecting text:", err);
+            } else {
+                logUsage(snippet); 
+            }
+        });
+    }
+
+    // Placeholder for API reporting capabilities
+    function logUsage(snippet) {
+        console.log(`[LOG] Snippet used: ${snippet.title} (ID: ${snippet.id})`);
+    }
+
+    // Save snippet to browser storage
+    function saveSnippet() {
+        const title = document.getElementById('snipTitle').value;
+        const text = document.getElementById('snipText').value;
+        const hotkey = document.getElementById('snipHotkey').value;
+
+        if (title && text && hotkey) {
+            snippets.push({ id: Date.now(), title, text, hotkey });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(snippets));
+            renderSnippets();
+            
+            // Clear input fields
+            document.getElementById('snipTitle').value = '';
+            document.getElementById('snipText').value = '';
+            document.getElementById('snipHotkey').value = '';
+        }
+    }
+
+    // Hotkey Listener: Alt + [1-9]
+    window.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key >= 1 && e.key <= 9) {
+            const found = snippets.find(s => s.hotkey === e.key);
+            if (found) {
+                e.preventDefault();
+                useSnippet(found);
+            }
+        }
+    });
+
+    window.onload = () => {
+        initSDK();
+        renderSnippets();
+    };
+</script>
+
+</body>
+</html>
